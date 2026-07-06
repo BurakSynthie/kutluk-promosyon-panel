@@ -88,35 +88,20 @@ export async function createAd(ad: Partial<AdRecord>) {
   return toAppAd(data as SupabaseAd);
 }
 
-export async function updateAd(id: number, ad: Partial<AdRecord>) {
+export async function deleteAd(id: number) {
   if (!id) {
-    throw new Error("Düzenlenecek reklam kaydı bulunamadı.");
+    throw new Error("Silinecek reklam kaydı bulunamadı.");
   }
 
-  const payload: Record<string, unknown> = {};
-
-  if (ad.date !== undefined) payload.date = ad.date;
-  if (ad.platform !== undefined) payload.platform = ad.platform;
-  if (ad.amount !== undefined) payload.amount = Number(ad.amount || 0);
-  if (ad.campaignName !== undefined) payload.campaign_name = ad.campaignName;
-  if (ad.note !== undefined) payload.note = ad.note;
-
-  const { data, error } = await supabase
-    .from("ads")
-    .update(payload)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
+  const { error } = await supabase.rpc("kp_delete_ad_expense", {
+    p_id: id,
+  });
 
   if (error) {
-    throw new Error(error.message || "Reklam kaydı güncellenemedi.");
+    throw new Error(error.message || "Reklam kaydı silinemedi.");
   }
 
-  if (!data) {
-    throw new Error("Reklam kaydı bulunamadı veya güncelleme yetkisi yok.");
-  }
-
-  return toAppAd(data as SupabaseAd);
+  return true;
 }
 
 export async function deleteAd(id: number) {
