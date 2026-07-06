@@ -112,10 +112,17 @@ export async function updateAd(id: number, ad: Partial<AdRecord>) {
 }
 
 export async function deleteAd(id: number) {
-  const { error } = await supabase.from("ads").delete().eq("id", id);
+  if (!id) {
+    throw new Error("Silinecek reklam kaydı bulunamadı.");
+  }
+
+  const { error } = await supabase
+    .from("ads")
+    .delete()
+    .eq("id", id);
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(error.message || "Reklam kaydı silinemedi.");
   }
 
   return true;
