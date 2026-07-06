@@ -214,7 +214,7 @@ function AnimatedStatCard({
 
   const content = (
     <div
-      className={`kp-animate-card kp-card-hover kp-shine rounded-[26px] border p-5 shadow-xl ${toneClasses.card} ${toneClasses.glow}`}
+      className={`kp-animate-card kp-card-hover kp-shine min-h-[138px] rounded-[26px] border p-5 shadow-xl ${toneClasses.card} ${toneClasses.glow}`}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-start justify-between gap-3">
@@ -359,10 +359,6 @@ export default function DashboardPage() {
     (tester) => tester.status !== "Siparişe Döndü" && tester.status !== "Kapandı"
   );
 
-  const convertedTesters = testers.filter(
-    (tester) => tester.status === "Siparişe Döndü"
-  );
-
   const recentOrders = useMemo(() => {
     return [...validOrders]
       .sort(
@@ -382,15 +378,71 @@ export default function DashboardPage() {
       .slice(0, 4);
   }, [ads]);
 
-  const recentTesters = useMemo(() => {
-    return [...testers]
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt || 0).getTime() -
-          new Date(a.createdAt || 0).getTime()
-      )
-      .slice(0, 4);
-  }, [testers]);
+  const actionItems = [
+    ...monthOrders
+      .filter((order) => Number(order.remainingAmount || 0) > 0)
+      .slice(0, 2)
+      .map((order) => ({
+        title: `${order.orderNo} ödeme bekliyor`,
+        description: `${order.customer} müşterisinden ${formatTL(
+          Number(order.remainingAmount || 0)
+        )} tahsil edilecek.`,
+        badge: "Ödeme",
+        href: "/payments",
+        tone: "yellow",
+      })),
+
+    ...monthOrders
+      .filter((order) => Number(order.cariAmount || 0) > 0 && !order.cariPaid)
+      .slice(0, 2)
+      .map((order) => ({
+        title: `${order.orderNo} cari bekliyor`,
+        description: `${order.customer} için ${formatTL(
+          Number(order.cariAmount || 0)
+        )} cari verilmemiş.`,
+        badge: "Cari",
+        href: "/cari",
+        tone: "purple",
+      })),
+
+    ...delayed.slice(0, 2).map((order) => ({
+      title: `${order.orderNo} gecikmiş sipariş`,
+      description: `${order.customer} siparişinin teslim tarihi geçmiş görünüyor.`,
+      badge: "Gecikmiş",
+      href: "/orders",
+      tone: "red",
+    })),
+
+    ...upcoming.slice(0, 2).map((order) => ({
+      title: `${order.orderNo} teslim yaklaşıyor`,
+      description: `${order.customer} siparişinin çıkış tarihi yaklaşıyor.`,
+      badge: "Yaklaşan",
+      href: "/orders",
+      tone: "orange",
+    })),
+
+    ...activeOrders
+      .filter((order) => order.status === "İşleme Alındı")
+      .slice(0, 2)
+      .map((order) => ({
+        title: `${order.orderNo} kargo bekliyor`,
+        description: `${order.customer} siparişi hâlâ işleme alındı durumunda.`,
+        badge: "Kargo",
+        href: "/cargo",
+        tone: "cyan",
+      })),
+
+    ...testers
+      .filter((tester) => tester.status === "Dönüş Bekleniyor")
+      .slice(0, 2)
+      .map((tester) => ({
+        title: `${tester.customer} tester dönüşü`,
+        description: `${tester.product || "Tester"} için müşteri dönüşü bekleniyor.`,
+        badge: "Tester",
+        href: "/tester",
+        tone: "emerald",
+      })),
+  ].slice(0, 8);
 
   const quickActions = [
     {
@@ -468,7 +520,7 @@ export default function DashboardPage() {
 
                     <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45">
                       Siparişler artık Supabase’den okunuyor. Haftalık cari,
-                      yaklaşan sipariş, günlük kâr ve bekleyen ödeme tek ekranda.
+                      yaklaşan sipariş, günlük brüt kâr ve bekleyen ödeme tek ekranda.
                     </p>
                   </div>
 
@@ -499,7 +551,7 @@ export default function DashboardPage() {
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <Link
                     href="/cari"
-                    className="group rounded-[24px] border border-purple-300/20 bg-purple-500/10 p-4 transition hover:-translate-y-1 hover:bg-purple-500/15"
+                    className="group min-h-[160px] rounded-[24px] border border-purple-300/20 bg-purple-500/10 p-4 transition hover:-translate-y-1 hover:bg-purple-500/15"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="grid h-11 w-11 place-items-center rounded-2xl bg-purple-400/15 text-purple-100">
@@ -522,7 +574,7 @@ export default function DashboardPage() {
 
                   <Link
                     href="/orders"
-                    className="group rounded-[24px] border border-orange-300/20 bg-orange-500/10 p-4 transition hover:-translate-y-1 hover:bg-orange-500/15"
+                    className="group min-h-[160px] rounded-[24px] border border-orange-300/20 bg-orange-500/10 p-4 transition hover:-translate-y-1 hover:bg-orange-500/15"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="grid h-11 w-11 place-items-center rounded-2xl bg-orange-400/15 text-orange-100">
@@ -545,7 +597,7 @@ export default function DashboardPage() {
 
                   <Link
                     href="/finance"
-                    className="group rounded-[24px] border border-emerald-300/20 bg-emerald-500/10 p-4 transition hover:-translate-y-1 hover:bg-emerald-500/15"
+                    className="group min-h-[160px] rounded-[24px] border border-emerald-300/20 bg-emerald-500/10 p-4 transition hover:-translate-y-1 hover:bg-emerald-500/15"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-100">
@@ -562,13 +614,13 @@ export default function DashboardPage() {
                       {formatTL(todayProfit)}
                     </p>
                     <p className="mt-1 text-xs font-bold text-white/45">
-                      Bugünkü kâr
+                      Bugünkü brüt kâr
                     </p>
                   </Link>
 
                   <Link
                     href="/payments"
-                    className="group rounded-[24px] border border-cyan-300/20 bg-cyan-500/10 p-4 transition hover:-translate-y-1 hover:bg-cyan-500/15"
+                    className="group min-h-[160px] rounded-[24px] border border-cyan-300/20 bg-cyan-500/10 p-4 transition hover:-translate-y-1 hover:bg-cyan-500/15"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="grid h-11 w-11 place-items-center rounded-2xl bg-cyan-400/15 text-cyan-100">
@@ -648,11 +700,11 @@ export default function DashboardPage() {
             />
 
             <AnimatedStatCard
-              title="Bu Ay Kâr"
+              title="Brüt Kâr"
               value={monthProfit}
               icon={CircleDollarSign}
               tone="emerald"
-              subtitle="Cari düşüldükten sonraki sipariş kâr görünümü."
+              subtitle="Cari düşüldükten sonra, reklam hariç sipariş kârı."
               delay={80}
               href="/finance"
             />
@@ -773,7 +825,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <CircleDollarSign size={20} className="text-emerald-100" />
                     <p className="text-sm font-black text-emerald-100">
-                      Bugünkü kâr
+                      Bugünkü brüt kâr
                     </p>
                   </div>
                   <p className="text-xl font-black text-emerald-100">
@@ -942,50 +994,65 @@ export default function DashboardPage() {
             <div className="kp-animate-card kp-card-hover rounded-[28px] border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div>
-                  <p className="text-sm font-black text-purple-200/70">
-                    Tester
+                  <p className="text-sm font-black text-emerald-200/70">
+                    Operasyon
                   </p>
-                  <h2 className="mt-1 text-2xl font-black">Son Testerlar</h2>
+                  <h2 className="mt-1 text-2xl font-black">
+                    Aksiyon Gerekenler
+                  </h2>
                 </div>
 
-                <FlaskConical size={24} className="text-purple-100" />
+                <PackageCheck size={24} className="text-emerald-100" />
               </div>
 
               <div className="mt-4 space-y-3">
-                {recentTesters.length === 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/45">
-                    Henüz tester kaydı yok.
+                {actionItems.length === 0 && (
+                  <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-5">
+                    <p className="text-base font-black text-emerald-100">
+                      Şu an acil aksiyon yok.
+                    </p>
+                    <p className="mt-1 text-sm font-semibold leading-5 text-white/45">
+                      Bekleyen ödeme, cari, kargo, yaklaşan teslim veya tester
+                      dönüş uyarısı bulunmuyor.
+                    </p>
                   </div>
                 )}
 
-                {recentTesters.map((tester) => (
-                  <Link
-                    key={tester.id}
-                    href="/tester"
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 transition hover:border-purple-300/25 hover:bg-white/[0.055]"
-                  >
-                    <div>
-                      <StatusBadge
-                        label={tester.status}
-                        tone={
-                          tester.status === "Siparişe Döndü"
-                            ? "emerald"
-                            : tester.status === "Kapandı"
-                              ? "red"
-                              : "purple"
-                        }
-                      />
-                      <p className="mt-2 font-black">{tester.customer}</p>
-                      <p className="mt-1 text-xs text-white/42">
-                        {tester.product} · {tester.essence}
-                      </p>
-                    </div>
+                {actionItems.map((item, index) => {
+                  const toneClasses =
+                    item.tone === "red"
+                      ? "border-red-300/20 bg-red-500/10 text-red-100 hover:border-red-300/30"
+                      : item.tone === "yellow"
+                        ? "border-yellow-300/20 bg-yellow-500/10 text-yellow-100 hover:border-yellow-300/30"
+                        : item.tone === "purple"
+                          ? "border-purple-300/20 bg-purple-500/10 text-purple-100 hover:border-purple-300/30"
+                          : item.tone === "orange"
+                            ? "border-orange-300/20 bg-orange-500/10 text-orange-100 hover:border-orange-300/30"
+                            : item.tone === "emerald"
+                              ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100 hover:border-emerald-300/30"
+                              : "border-cyan-300/20 bg-cyan-500/10 text-cyan-100 hover:border-cyan-300/30";
 
-                    <p className="text-sm font-black text-purple-100">
-                      {tester.sendDate}
-                    </p>
-                  </Link>
-                ))}
+                  return (
+                    <Link
+                      key={`${item.title}-${index}`}
+                      href={item.href}
+                      className={`block rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:bg-white/[0.055] ${toneClasses}`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-black">{item.title}</p>
+                          <p className="mt-1 text-xs font-semibold leading-5 text-white/45">
+                            {item.description}
+                          </p>
+                        </div>
+
+                        <span className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black text-white/70">
+                          {item.badge}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </div>
