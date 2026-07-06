@@ -78,6 +78,22 @@ const menuItems = [
 export default function Sidebar() {
   const pathname = usePathname();
 
+  function isMenuActive(href: string) {
+    if (href === "/") {
+      return pathname === "/";
+    }
+
+    if (href === "/orders") {
+      return pathname === "/orders";
+    }
+
+    if (href === "/orders/new") {
+      return pathname === "/orders/new";
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
   return (
     <aside className="fixed left-0 top-0 z-30 hidden h-screen w-72 border-r border-white/10 bg-black/30 p-5 backdrop-blur-2xl lg:block">
       <div className="flex h-full flex-col">
@@ -115,11 +131,7 @@ export default function Sidebar() {
         <nav className="mt-5 space-y-2 overflow-y-auto pr-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
-
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive = isMenuActive(item.href);
 
             return (
               <Link
@@ -154,8 +166,6 @@ export default function Sidebar() {
             );
           })}
         </nav>
-
-        
       </div>
     </aside>
   );

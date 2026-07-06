@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   CreditCard,
   Eye,
+  ImageIcon,
+  Maximize2,
   PackageCheck,
   PlusCircle,
   RefreshCw,
@@ -81,6 +83,7 @@ export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("active");
 
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
 
   const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -317,7 +320,7 @@ export default function OrdersPage() {
       <div className="relative flex">
         <Sidebar />
 
-        <section className="min-h-screen flex-1 px-4 py-4 pb-28 lg:ml-72 lg:px-8">
+        <section className="min-h-screen flex-1 px-4 py-4 pb-44 lg:ml-72 lg:px-8">
           <Topbar delayedCount={delayedOrders.length} upcomingCount={upcomingOrders.length} />
 
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -457,6 +460,13 @@ export default function OrdersPage() {
                             {order.channel || "Kanal yok"}
                           </span>
 
+                          {(order.images || []).length > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 px-3 py-1 text-xs font-black text-purple-100">
+                              <ImageIcon size={13} />
+                              {(order.images || []).length} görsel
+                            </span>
+                          )}
+
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-black ${
                               due.type === "late"
@@ -486,6 +496,29 @@ export default function OrdersPage() {
                             </span>
                           ))}
                         </div>
+
+                        {(order.images || []).length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {(order.images || []).slice(0, 4).map((image, index) => (
+                              <div
+                                key={`${image.url}-${index}`}
+                                className="h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]"
+                              >
+                                <img
+                                  src={image.url}
+                                  alt={image.name || "Sipariş görseli"}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            ))}
+
+                            {(order.images || []).length > 4 && (
+                              <div className="grid h-12 w-12 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-xs font-black text-white/60">
+                                +{(order.images || []).length - 4}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[520px]">
@@ -673,6 +706,66 @@ export default function OrdersPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[24px] border border-white/10 bg-black/20 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-purple-100">Sipariş Görselleri</p>
+                  <p className="mt-1 text-xs text-white/40">
+                    Tasarım, logo, örnek baskı veya müşteri dosyaları.
+                  </p>
+                </div>
+
+                <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-black text-purple-100">
+                  {(detailOrder.images || []).length} görsel
+                </span>
+              </div>
+
+              <div className="mt-4">
+                {(detailOrder.images || []).length === 0 && (
+                  <p className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm text-white/40">
+                    Bu siparişe görsel eklenmemiş.
+                  </p>
+                )}
+
+                {(detailOrder.images || []).length > 0 && (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                    {(detailOrder.images || []).map((image, index) => (
+                      <button
+                        key={`${image.url}-${index}`}
+                        onClick={() =>
+                          setPreviewImage({
+                            url: image.url,
+                            name: image.name || "Sipariş görseli",
+                          })
+                        }
+                        className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] text-left transition hover:-translate-y-0.5 hover:border-purple-300/30 hover:bg-white/[0.06]"
+                      >
+                        <div className="relative aspect-square overflow-hidden bg-black/30">
+                          <img
+                            src={image.url}
+                            alt={image.name || "Sipariş görseli"}
+                            className="h-full w-full object-cover transition group-hover:scale-105"
+                          />
+
+                          <div className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/35 group-hover:opacity-100">
+                            <div className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white backdrop-blur">
+                              <Maximize2 size={18} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3">
+                          <p className="truncate text-xs font-black text-white/70">
+                            {image.name || `Görsel ${index + 1}`}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -868,6 +961,36 @@ export default function OrdersPage() {
               >
                 {saving ? "Kaydediliyor..." : "Kargo Çıktı Yap"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewImage && (
+        <div className="fixed inset-0 z-[110] grid place-items-center bg-black/80 p-4 backdrop-blur-md">
+          <div className="w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/10 bg-[#090b16] shadow-2xl shadow-black/70">
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4">
+              <div className="min-w-0">
+                <p className="text-xs font-black text-purple-100/60">Görsel Önizleme</p>
+                <p className="truncate text-sm font-black text-white/80">
+                  {previewImage.name}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/10 text-white/70 transition hover:bg-white/15"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            <div className="max-h-[78vh] overflow-auto bg-black/30 p-3">
+              <img
+                src={previewImage.url}
+                alt={previewImage.name}
+                className="mx-auto max-h-[74vh] w-auto max-w-full rounded-2xl object-contain"
+              />
             </div>
           </div>
         </div>

@@ -94,7 +94,18 @@ export default function MobileNav() {
   const [open, setOpen] = useState(false);
 
   function isActive(href: string) {
-    if (href === "/") return pathname === "/";
+    if (href === "/") {
+      return pathname === "/";
+    }
+
+    if (href === "/orders") {
+      return pathname === "/orders";
+    }
+
+    if (href === "/orders/new") {
+      return pathname === "/orders/new";
+    }
+
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
@@ -104,7 +115,7 @@ export default function MobileNav() {
         <div className="fixed inset-0 z-40 bg-black/65 backdrop-blur-sm lg:hidden">
           <div className="absolute inset-0" onClick={() => setOpen(false)} />
 
-          <div className="absolute bottom-0 left-0 right-0 max-h-[82vh] overflow-y-auto rounded-t-[30px] border border-white/10 bg-[#090b16] p-4 shadow-2xl shadow-black/70">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[82vh] overflow-y-auto rounded-t-[30px] border border-white/10 bg-[#090b16] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/70">
             <div className="mb-4 flex items-center justify-between rounded-[24px] border border-cyan-300/20 bg-cyan-500/10 p-4">
               <div className="flex items-center gap-3">
                 <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white p-1.5 shadow-lg shadow-cyan-950/40">
@@ -178,7 +189,7 @@ export default function MobileNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-3 left-3 right-3 z-50 rounded-[26px] border border-white/10 bg-black/55 p-2 shadow-2xl shadow-black/50 backdrop-blur-2xl lg:hidden">
+      <nav className="fixed bottom-3 left-3 right-3 z-50 rounded-[26px] border border-white/10 bg-black/60 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/50 backdrop-blur-2xl lg:hidden">
         <div className="grid grid-cols-5 gap-1">
           {mainItems.map((item) => {
             const Icon = item.icon;
@@ -190,7 +201,9 @@ export default function MobileNav() {
                 href={item.href}
                 className={`group relative flex flex-col items-center justify-center gap-1 rounded-[20px] px-2 py-2.5 transition ${
                   item.special
-                    ? "bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-lg shadow-cyan-950/40"
+                    ? active
+                      ? "bg-gradient-to-br from-cyan-300 to-blue-600 text-white shadow-lg shadow-cyan-950/50 ring-1 ring-cyan-200/40"
+                      : "bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-lg shadow-cyan-950/40"
                     : active
                       ? "bg-cyan-400/15 text-cyan-100"
                       : "text-white/45 hover:bg-white/10 hover:text-white"
@@ -198,6 +211,10 @@ export default function MobileNav() {
               >
                 {active && !item.special && (
                   <span className="absolute top-1 h-1 w-5 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.9)]" />
+                )}
+
+                {active && item.special && (
+                  <span className="absolute top-1 h-1 w-5 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)]" />
                 )}
 
                 <Icon

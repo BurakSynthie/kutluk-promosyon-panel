@@ -16,6 +16,14 @@ export type Payment = {
   note: string;
 };
 
+export type OrderImage = {
+  name: string;
+  url: string;
+  path: string;
+  size?: number;
+  type?: string;
+};
+
 export type Order = {
   id: number;
   orderNo: string;
@@ -35,6 +43,7 @@ export type Order = {
   note: string;
   items: OrderItem[];
   payments?: Payment[];
+  images?: OrderImage[];
   createdAt: string;
   updatedAt?: string;
   cargoCompany?: string;
@@ -62,6 +71,7 @@ type SupabaseOrder = {
   note: string | null;
   items: OrderItem[] | null;
   payments: Payment[] | null;
+  images: OrderImage[] | null;
   cargo_company: string | null;
   cargo_tracking_no: string | null;
   cargo_date: string | null;
@@ -89,6 +99,7 @@ function toAppOrder(order: SupabaseOrder): Order {
     note: order.note || "",
     items: Array.isArray(order.items) ? order.items : [],
     payments: Array.isArray(order.payments) ? order.payments : [],
+    images: Array.isArray(order.images) ? order.images : [],
     createdAt: order.created_at,
     updatedAt: order.updated_at || "",
     cargoCompany: order.cargo_company || "",
@@ -124,10 +135,23 @@ function toSupabaseOrder(order: Partial<Order>, userId: string) {
     note: order.note || "",
     items: order.items || [],
     payments: order.payments || [],
+    images: order.images || [],
     cargo_company: order.cargoCompany || "",
     cargo_tracking_no: order.cargoTrackingNo || "",
     cargo_date: order.cargoDate || null,
   };
+}
+
+function cleanFileName(name: string) {
+  return name
+    .toLowerCase()
+    .replaceAll("ı", "i")
+    .replaceAll("ğ", "g")
+    .replaceAll("ü", "u")
+    .replaceAll("ş", "s")
+    .replaceAll("ö", "o")
+    .replaceAll("ç", "c")
+    .replace(/[^a-z0-9._-]/g, "-");
 }
 
 export async function getCurrentUserId() {
@@ -138,6 +162,49 @@ export async function getCurrentUserId() {
   }
 
   return data.user.id;
+}
+
+export async function uploadOrderImages(files: File[], orderNo: string) {
+  const userId = await getCurrentUserId();
+
+  if (!files.length) {
+    return [];
+  }
+
+  const uploadedImages: OrderImage[] = [];
+
+  for (const file of files) {
+    const fileExt = file.name.split(".").pop() || "jpg";
+    const safeName = cleanFileName(file.name.replace(`.${fileExt}`, ""));
+    const uniqueName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}-${safeName}.${fileExt}`;
+
+    const path = `${userId}/${orderNo || "siparis"}/${uniqueName}`;
+
+    const { error } = await supabase.storage
+      .from("order-images")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const { data } = supabase.storage.from("order-images").getPublicUrl(path);
+
+    uploadedImages.push({
+      name: file.name,
+      url: data.publicUrl,
+      path,
+      size: file.size,
+      type: file.type,
+    });
+  }
+
+  return uploadedImages;
 }
 
 export async function fetchOrders() {
@@ -197,22 +264,41 @@ export async function patchOrder(id: number, order: Partial<Order>) {
   if (order.customer !== undefined) payload.customer = order.customer;
   if (order.channel !== undefined) payload.channel = order.channel;
   if (order.contact !== undefined) payload.contact = order.contact;
-  if (order.processDate !== undefined) payload.process_date = order.processDate || null;
-  if (order.workDays !== undefined) payload.work_days = Number(order.workDays || 12);
+  if (order.processDate !== undefined) {
+    payload.process_date = order.processDate || null;
+  }
+  if (order.workDays !== undefined) {
+    payload.work_days = Number(order.workDays || 12);
+  }
   if (order.dueDate !== undefined) payload.due_date = order.dueDate || null;
   if (order.status !== undefined) payload.status = order.status;
-  if (order.totalPrice !== undefined) payload.total_price = Number(order.totalPrice || 0);
-  if (order.paidAmount !== undefined) payload.paid_amount = Number(order.paidAmount || 0);
-  if (order.remainingAmount !== undefined) payload.remaining_amount = Number(order.remainingAmount || 0);
-  if (order.cariAmount !== undefined) payload.cari_amount = Number(order.cariAmount || 0);
+  if (order.totalPrice !== undefined) {
+    payload.total_price = Number(order.totalPrice || 0);
+  }
+  if (order.paidAmount !== undefined) {
+    payload.paid_amount = Number(order.paidAmount || 0);
+  }
+  if (order.remainingAmount !== undefined) {
+    payload.remaining_amount = Number(order.remainingAmount || 0);
+  }
+  if (order.cariAmount !== undefined) {
+    payload.cari_amount = Number(order.cariAmount || 0);
+  }
   if (order.profit !== undefined) payload.profit = Number(order.profit || 0);
   if (order.cariPaid !== undefined) payload.cari_paid = Boolean(order.cariPaid);
   if (order.note !== undefined) payload.note = order.note;
   if (order.items !== undefined) payload.items = order.items;
   if (order.payments !== undefined) payload.payments = order.payments;
-  if (order.cargoCompany !== undefined) payload.cargo_company = order.cargoCompany;
-  if (order.cargoTrackingNo !== undefined) payload.cargo_tracking_no = order.cargoTrackingNo;
-  if (order.cargoDate !== undefined) payload.cargo_date = order.cargoDate || null;
+  if (order.images !== undefined) payload.images = order.images;
+  if (order.cargoCompany !== undefined) {
+    payload.cargo_company = order.cargoCompany;
+  }
+  if (order.cargoTrackingNo !== undefined) {
+    payload.cargo_tracking_no = order.cargoTrackingNo;
+  }
+  if (order.cargoDate !== undefined) {
+    payload.cargo_date = order.cargoDate || null;
+  }
 
   const { data, error } = await supabase
     .from("orders")

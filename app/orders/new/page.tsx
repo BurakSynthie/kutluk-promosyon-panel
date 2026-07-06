@@ -5,16 +5,24 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import MobileNav from "@/components/MobileNav";
-import { createOrder, fetchOrders, type OrderItem } from "@/lib/ordersApi";
+import {
+  createOrder,
+  fetchOrders,
+  uploadOrderImages,
+  type OrderItem,
+} from "@/lib/ordersApi";
 import {
   ArrowLeft,
   Calculator,
   CheckCircle2,
   CreditCard,
+  ImagePlus,
   PackagePlus,
   Plus,
   Save,
   Trash2,
+  UploadCloud,
+  X,
 } from "lucide-react";
 
 const channels = ["Instagram", "WhatsApp", "Telefon", "Web Sitesi", "Referans", "Diğer"];
@@ -129,6 +137,8 @@ export default function NewOrderPage() {
   const [note, setNote] = useState("");
 
   const [items, setItems] = useState<OrderItem[]>([emptyItem()]);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   useEffect(() => {
     async function prepareOrderNo() {
@@ -152,10 +162,16 @@ export default function NewOrderPage() {
     prepareOrderNo();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    };
+  }, [imagePreviews]);
+
   const dueDate = useMemo(() => {
-  if (!processDate) return "";
-  return addBusinessDays(processDate, Number(workDays || 12));
-}, [processDate, workDays]);
+    if (!processDate) return "";
+    return addBusinessDays(processDate, Number(workDays || 12));
+  }, [processDate, workDays]);
 
   const calculated = useMemo(() => {
     const total = Number(totalPrice || 0);
@@ -196,6 +212,44 @@ export default function NewOrderPage() {
     setItems((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   }
 
+  function handleImageSelection(files: FileList | null) {
+    if (!files) return;
+
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    if (imageFiles.length === 0) {
+      alert("Sadece görsel dosyası seçebilirsin.");
+      return;
+    }
+
+    const oversized = imageFiles.find((file) => file.size > 10 * 1024 * 1024);
+
+    if (oversized) {
+      alert("Her görsel en fazla 10 MB olmalı.");
+      return;
+    }
+
+    const nextImages = [...selectedImages, ...imageFiles].slice(0, 10);
+
+    if (selectedImages.length + imageFiles.length > 10) {
+      alert("Bir siparişe en fazla 10 görsel ekleyebilirsin.");
+    }
+
+    imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    setSelectedImages(nextImages);
+    setImagePreviews(nextImages.map((file) => URL.createObjectURL(file)));
+  }
+
+  function removeSelectedImage(index: number) {
+    const nextImages = selectedImages.filter((_, imageIndex) => imageIndex !== index);
+
+    imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    setSelectedImages(nextImages);
+    setImagePreviews(nextImages.map((file) => URL.createObjectURL(file)));
+  }
+
   async function saveOrder() {
     if (!customer.trim()) {
       alert("Müşteri adı girmen gerekiyor.");
@@ -215,6 +269,10 @@ export default function NewOrderPage() {
     setSaving(true);
 
     try {
+      const uploadedImages = selectedImages.length
+        ? await uploadOrderImages(selectedImages, orderNo)
+        : [];
+
       await createOrder({
         orderNo,
         customer: customer.trim(),
@@ -232,6 +290,7 @@ export default function NewOrderPage() {
         cariPaid: false,
         note,
         items,
+        images: uploadedImages,
         payments:
           calculated.paid > 0
             ? [
@@ -260,7 +319,7 @@ export default function NewOrderPage() {
       <div className="relative flex">
         <Sidebar />
 
-        <section className="min-h-screen flex-1 px-4 py-4 pb-28 lg:ml-72 lg:px-8">
+        <section className="min-h-screen flex-1 px-4 py-4 pb-44 lg:ml-72 lg:px-8">
           <Topbar delayedCount={0} upcomingCount={0} />
 
           <div className="mt-6 rounded-[30px] border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
@@ -277,11 +336,11 @@ export default function NewOrderPage() {
                 <p className="text-sm font-black text-cyan-200/70">Yeni Sipariş</p>
 
                 <h1 className="mt-2 text-3xl font-black">
-                  Supabase’e bağlı sipariş ekle
+                  Yeni sipariş oluştur
                 </h1>
 
                 <p className="mt-2 text-sm leading-6 text-white/45">
-                  Bu sayfadan eklediğin sipariş artık localStorage’a değil Supabase database’e kaydedilir.
+                  Müşteri, ürün, görsel, ödeme ve cari bilgilerini tek ekranda kaydet.
                 </p>
               </div>
 
@@ -485,6 +544,76 @@ export default function NewOrderPage() {
                 </div>
 
                 <div className="rounded-[26px] border border-white/10 bg-black/20 p-5">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="grid h-11 w-11 place-items-center rounded-2xl bg-purple-400/15 text-purple-100">
+                      <ImagePlus size={21} />
+                    </div>
+
+                    <div>
+                      <p className="font-black">Sipariş Görselleri</p>
+                      <p className="mt-1 text-xs text-white/40">
+                        Tasarım, logo, baskı örneği veya müşteri görsellerini ekle.
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed border-cyan-300/25 bg-cyan-500/10 p-6 text-center transition hover:border-cyan-200/45 hover:bg-cyan-500/15">
+                    <UploadCloud size={28} className="text-cyan-100" />
+                    <p className="mt-3 text-sm font-black text-cyan-100">
+                      Görsel seç veya buraya yükle
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-white/45">
+                      JPG, PNG, WEBP desteklenir. En fazla 10 görsel, görsel başına 10 MB.
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleImageSelection(e.target.files)}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {imagePreviews.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                      {imagePreviews.map((preview, index) => (
+                        <div
+                          key={preview}
+                          className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/30"
+                        >
+                          <img
+                            src={preview}
+                            alt={`Sipariş görseli ${index + 1}`}
+                            className="h-32 w-full object-cover"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => removeSelectedImage(index)}
+                            className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-black/70 text-white transition hover:bg-red-500"
+                          >
+                            <X size={16} />
+                          </button>
+
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2">
+                            <p className="truncate text-[11px] font-bold text-white/80">
+                              {selectedImages[index]?.name}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                    <p className="text-xs font-black text-white/45">Seçilen görsel</p>
+                    <p className="mt-1 text-lg font-black text-white">
+                      {selectedImages.length} adet
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-[26px] border border-white/10 bg-black/20 p-5">
                   <p className="font-black">Sipariş Notu</p>
 
                   <textarea
@@ -626,12 +755,12 @@ export default function NewOrderPage() {
                   {saving ? (
                     <>
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Kaydediliyor...
+                      Görseller ve sipariş kaydediliyor...
                     </>
                   ) : (
                     <>
                       <Save size={19} />
-                      Supabase’e Kaydet
+                      Siparişi Kaydet
                     </>
                   )}
                 </button>
