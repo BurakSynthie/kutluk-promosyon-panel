@@ -25,13 +25,13 @@ type SupabaseAd = {
 
 function toAppAd(ad: SupabaseAd): AdRecord {
   return {
-    id: ad.id,
-    date: ad.date,
+    id: Number(ad.id),
+    date: ad.date || "",
     platform: ad.platform || "",
     amount: Number(ad.amount || 0),
     campaignName: ad.campaign_name || "",
     note: ad.note || "",
-    createdAt: ad.created_at,
+    createdAt: ad.created_at || "",
     updatedAt: ad.updated_at || "",
   };
 }
@@ -88,20 +88,31 @@ export async function createAd(ad: Partial<AdRecord>) {
   return toAppAd(data as SupabaseAd);
 }
 
-export async function deleteAd(id: number) {
+export async function updateAd(id: number, ad: Partial<AdRecord>) {
   if (!id) {
-    throw new Error("Silinecek reklam kaydı bulunamadı.");
+    throw new Error("Düzenlenecek reklam kaydı bulunamadı.");
   }
 
-  const { error } = await supabase.rpc("kp_delete_ad_expense", {
+  const payload = {
     p_id: id,
-  });
+    p_date: ad.date || new Date().toISOString().split("T")[0],
+    p_platform: ad.platform || "Instagram",
+    p_amount: Number(ad.amount || 0),
+    p_campaign_name: ad.campaignName || "",
+    p_note: ad.note || "",
+  };
+
+  const { data, error } = await supabase.rpc("kp_update_ad_expense", payload);
 
   if (error) {
-    throw new Error(error.message || "Reklam kaydı silinemedi.");
+    throw new Error(error.message || "Reklam kaydı güncellenemedi.");
   }
 
-  return true;
+  if (!data) {
+    throw new Error("Reklam kaydı güncellendi ama veri geri dönmedi.");
+  }
+
+  return toAppAd(data as SupabaseAd);
 }
 
 export async function deleteAd(id: number) {
@@ -109,18 +120,16 @@ export async function deleteAd(id: number) {
     throw new Error("Silinecek reklam kaydı bulunamadı.");
   }
 
-  const { data, error } = await supabase
-    .from("ads")
-    .delete()
-    .eq("id", id)
-    .select("id");
+  const { data, error } = await supabase.rpc("kp_delete_ad_expense", {
+    p_id: id,
+  });
 
   if (error) {
     throw new Error(error.message || "Reklam kaydı silinemedi.");
   }
 
-  if (!data || data.length === 0) {
-    throw new Error("Reklam kaydı bulunamadı veya silme yetkisi yok.");
+  if (!data) {
+    throw new Error("Reklam kaydı silinemedi veya kayıt bulunamadı.");
   }
 
   return true;
