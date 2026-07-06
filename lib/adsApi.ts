@@ -51,7 +51,7 @@ async function getCurrentUserId() {
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
-    throw new Error("Kullanıcı oturumu bulunamadı.");
+    throw new Error("Kullanıcı oturumu bulunamadı. Çıkış yapıp tekrar giriş yap.");
   }
 
   return data.user.id;
@@ -65,7 +65,7 @@ export async function fetchAds() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(error.message || "Reklam kayıtları yüklenemedi.");
   }
 
   return ((data || []) as SupabaseAd[]).map(toAppAd);
@@ -82,13 +82,17 @@ export async function createAd(ad: Partial<AdRecord>) {
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(error.message || "Reklam kaydı oluşturulamadı.");
   }
 
   return toAppAd(data as SupabaseAd);
 }
 
 export async function updateAd(id: number, ad: Partial<AdRecord>) {
+  if (!id) {
+    throw new Error("Düzenlenecek reklam kaydı bulunamadı.");
+  }
+
   const payload: Record<string, unknown> = {};
 
   if (ad.date !== undefined) payload.date = ad.date;
@@ -102,10 +106,14 @@ export async function updateAd(id: number, ad: Partial<AdRecord>) {
     .update(payload)
     .eq("id", id)
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(error.message || "Reklam kaydı güncellenemedi.");
+  }
+
+  if (!data) {
+    throw new Error("Reklam kaydı bulunamadı veya güncelleme yetkisi yok.");
   }
 
   return toAppAd(data as SupabaseAd);
@@ -116,13 +124,18 @@ export async function deleteAd(id: number) {
     throw new Error("Silinecek reklam kaydı bulunamadı.");
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("ads")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
 
   if (error) {
     throw new Error(error.message || "Reklam kaydı silinemedi.");
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error("Reklam kaydı bulunamadı veya silme yetkisi yok.");
   }
 
   return true;
